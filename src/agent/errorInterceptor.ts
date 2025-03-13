@@ -3,7 +3,6 @@ import { logger } from "../utils/logger";
 import axios from "axios";
 import { config } from "../config/config";
 
-// Function to send error details to the microservice
 const reportError = async (error: Error, type: string) => {
     if (!config.MICRO_SERVICE_URL) {
       logger.warn(`Skipping error reporting: MICRO_SERVICE_URL is not set.`);
