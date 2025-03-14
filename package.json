@@ -1,6 +1,6 @@
 {
   "name": "code-error-telex-agent-handler",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.js",
   "bin": {
     "telex-agent": "dist/index.js"
@@ -14,7 +14,13 @@
   "engines": {
     "node": ">=16.0.0"
   },
-  "keywords": ["zeromq", "error handling", "agent", "distributed systems", "apm"],
+  "keywords": [
+    "zeromq",
+    "error handling",
+    "agent",
+    "distributed systems",
+    "apm"
+  ],
   "author": "Micah Erumaka",
   "license": "ISC",
   "description": "A ZeroMQ-based error handling agent for distributed systems.",
