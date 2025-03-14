@@ -3,6 +3,7 @@ import { logger } from "./utils/logger";
 import { config } from "./config/config";
 import { setupErrorInterceptor } from "./agent/errorInterceptor";
 import axios from "axios"; // Ensure axios is installed: npm install axios
+import { initializeZeroMqClient } from "./zeromqService";
 
 const app = express();
 const PORT: number = config.PORT || 3001;
@@ -29,7 +30,7 @@ const keepRenderAwake = () => {
   }, 300000); // 5 minutes
 };
 
-const startAgent = () => {
+const startAgent = (async () => {
   logger.info("🚀 Starting Code Error Detection & Telex Reporting Agent...");
 
   setupErrorInterceptor();
@@ -46,8 +47,9 @@ const startAgent = () => {
 
   logger.info("🛠️ Agent is now monitoring for uncaught errors.");
 
+  // start zeromq server 
+  initializeZeroMqClient()
+
   // Start keeping Render awake
   keepRenderAwake();
-};
-
-startAgent();
+})();
