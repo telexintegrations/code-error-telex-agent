@@ -8,6 +8,9 @@
     "dev": "ts-node src/index.ts",
     "build:dev": "npm run build && npm run dev"
   },
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
