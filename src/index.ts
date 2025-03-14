@@ -2,12 +2,12 @@ import express, { Request, Response } from "express";
 import { logger } from "./utils/logger";
 import { config } from "./config/config";
 import { setupErrorInterceptor } from "./agent/errorInterceptor";
-import axios from "axios"; // Ensure axios is installed: npm install axios
+import axios from "axios";
 import { initializeZeroMqClient } from "./zeromqService";
 
 const app = express();
 const PORT: number = config.PORT || 3001;
-const RENDER_HEALTH_CHECK_URL: string = "https://your-render-app.onrender.com/health"; // Replace with actual URL
+const RENDER_HEALTH_CHECK_URL: string = "https://your-render-app.onrender.com/health";
 
 app.use(express.json());
 
@@ -27,7 +27,7 @@ const keepRenderAwake = () => {
         logger.error("❌ Render Ping Failed: Unknown error");
       }
     }
-  }, 300000); // 5 minutes
+  }, 300000);
 };
 
 const startAgent = (async () => {
@@ -35,21 +35,17 @@ const startAgent = (async () => {
 
   setupErrorInterceptor();
 
-  // Simulate an error after a delay
   setTimeout(() => {
     throw new Error("Test Error: This is a simulated uncaught exception.");
   }, 5000);
 
-  // Start HTTP server
   app.listen(PORT, () => {
     logger.info(`⚡ APM Agent running on port ${PORT}`);
   });
 
   logger.info("🛠️ Agent is now monitoring for uncaught errors.");
 
-  // start zeromq server 
   initializeZeroMqClient()
 
-  // Start keeping Render awake
   keepRenderAwake();
 })();

@@ -7,7 +7,7 @@ dotenv.config();
 export interface Config {
   PORT: number;
   MICRO_SERVICE_URL: string;
-  CHANNEL_ID: string; // Add this line
+  CHANNEL_ID: string;
   LOG_LEVEL: string;
 
 }
@@ -33,7 +33,6 @@ export const config: Config = {
   LOG_LEVEL: process.env.LOG_LEVEL || fileConfig.LOG_LEVEL || "info",
 };
 
-// Function to load channel ID from the config file
 function loadChannelIdFromConfig(): string {
   try {
     const configPath = path.join(process.cwd(), '.code-error-telex-agent', 'config.json');

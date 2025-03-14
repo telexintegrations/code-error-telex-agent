@@ -15,7 +15,6 @@ const reportError = async (error: Error, type: string): Promise<void> => {
   logger.info(`Reporting ${type} to ${config.MICRO_SERVICE_URL}/api/errors`);
 
   try {
-    // init zero mq client 
     if (!zeroMqClient) {
       zeroMqClient = await initializeZeroMqClient();
     }
@@ -27,8 +26,7 @@ const reportError = async (error: Error, type: string): Promise<void> => {
       timestamp: new Date().toISOString(),
     });
 
-      console.log(config.CHANNEL_ID)
-    // send zero mq message 
+    console.log(config.CHANNEL_ID)
     await sendZeroMqMessage(zeroMqClient, JSON.stringify({
       channelId: config.CHANNEL_ID,
       type,
@@ -51,7 +49,6 @@ const reportError = async (error: Error, type: string): Promise<void> => {
   }
 };
 
-// Function to set up error interception
 export const setupErrorInterceptor = (): void => {
   process.on("uncaughtException", (error) => {
     logger.error(`Uncaught Exception: ${error.message}`);
