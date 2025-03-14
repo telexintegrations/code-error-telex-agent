@@ -5,7 +5,6 @@ export async function initializeZeroMqClient() {
     const subscribeSocket = new zmq.Subscriber();
 
     try {
-        // Connect both sockets
         await requestSocket.connect('tcp://127.0.0.1:3030');
         await subscribeSocket.connect('tcp://127.0.0.1:3031');
         await subscribeSocket.subscribe('update');
