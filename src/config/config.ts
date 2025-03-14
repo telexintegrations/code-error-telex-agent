@@ -7,6 +7,7 @@ dotenv.config();
 export interface Config {
   PORT: number;
   MICRO_SERVICE_URL: string;
+  CHANNEL_ID: string; // Add this line
   LOG_LEVEL: string;
 
 }
@@ -24,9 +25,22 @@ if (fs.existsSync(configFilePath)) {
 
 export const config: Config = {
   PORT: Number(process.env.PORT) || fileConfig.PORT || 3000,
+  CHANNEL_ID: loadChannelIdFromConfig(),
   MICRO_SERVICE_URL:
     process.env.MICRO_SERVICE_URL ||
     fileConfig.MICRO_SERVICE_URL ||
     "http://localhost:4000",
   LOG_LEVEL: process.env.LOG_LEVEL || fileConfig.LOG_LEVEL || "info",
 };
+
+// Function to load channel ID from the config file
+function loadChannelIdFromConfig(): string {
+  try {
+    const configPath = path.join(process.cwd(), '.code-error-telex-agent', 'config.json');
+    const fileConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    return fileConfig.channelId || '';
+  } catch (err) {
+    console.warn('Could not load channel ID from config file. Using empty string.');
+    return '';
+  }
+}

@@ -27,8 +27,10 @@ const reportError = async (error: Error, type: string): Promise<void> => {
       timestamp: new Date().toISOString(),
     });
 
+      console.log(config.CHANNEL_ID)
     // send zero mq message 
     await sendZeroMqMessage(zeroMqClient, JSON.stringify({
+      channelId: config.CHANNEL_ID,
       type,
       message: error.message,
       stack: error.stack,
