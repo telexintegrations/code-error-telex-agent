@@ -9,7 +9,7 @@ const axios_1 = __importDefault(require("axios"));
 const config_1 = require("../config/config");
 const reportError = async (error, type) => {
     if (!config_1.config.MICRO_SERVICE_URL) {
-        logger_1.logger.warn(`Skipping error reporting: MICRO_SERVICE_URL is not set.`);
+        logger_1.logger.warn("Skipping error reporting: MICRO_SERVICE_URL is not set.");
         return;
     }
     logger_1.logger.info(`Reporting ${type} to ${config_1.config.MICRO_SERVICE_URL}/api/errors`);
@@ -23,15 +23,13 @@ const reportError = async (error, type) => {
         logger_1.logger.info(`Reported ${type} to microservice.`);
     }
     catch (err) {
-        if (axios_1.default.isAxiosError(err)) {
+        if (err instanceof Error) {
             logger_1.logger.error(`Failed to report ${type}: ${err.message}`, {
-                status: err.response?.status,
-                data: err.response?.data,
-                config: err.config,
+                stack: err.stack,
             });
         }
         else {
-            logger_1.logger.error(`Failed to report ${type}:`, err);
+            logger_1.logger.error(`Failed to report ${type}: Unknown error`, err);
         }
     }
 };
@@ -44,7 +42,7 @@ const setupErrorInterceptor = () => {
     process.on("unhandledRejection", (error) => {
         if (error instanceof Error) {
             logger_1.logger.error(`Unhandled Rejection: ${error.message}`);
-            setImmediate(() => reportError(error, "uncaughtException"));
+            setImmediate(() => reportError(error, "unhandledRejection"));
         }
         else {
             logger_1.logger.error(`Unhandled Rejection: ${String(error)}`);
