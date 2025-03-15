@@ -21,13 +21,9 @@ const keepRenderAwake = () => {
       const response = await axios.get(RENDER_HEALTH_CHECK_URL);
       logger.info(`✅ Render Ping Successful: ${response.status} ${response.statusText}`);
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        logger.error(`❌ Render Ping Failed: ${error.message}`);
-      } else {
-        logger.error("❌ Render Ping Failed: Unknown error");
-      }
+      logger.error(`❌ Render Ping Failed: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
-  }, 300000);
+  }, 300000); 
 };
 
 const startAgent = (async () => {
@@ -35,7 +31,15 @@ const startAgent = (async () => {
 
   setupErrorInterceptor();
 
+  try {
+    const zmqClient = await initializeZeroMqClient();
+    logger.info("🔗 ZeroMQ Client initialized and connected.");
+  } catch (error) {
+    logger.error("❌ Failed to initialize ZeroMQ Client:", error);
+  }
+
   setTimeout(() => {
+    logger.warn("⚠️ Triggering test error...");
     throw new Error("Test Error: This is a simulated uncaught exception.");
   }, 5000);
 
@@ -44,8 +48,6 @@ const startAgent = (async () => {
   });
 
   logger.info("🛠️ Agent is now monitoring for uncaught errors.");
-
-  initializeZeroMqClient()
 
   keepRenderAwake();
 })();

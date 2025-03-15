@@ -6,13 +6,17 @@ export async function initializeZeroMqClient() {
 
     try {
         await requestSocket.connect('tcp://127.0.0.1:3030');
+        console.log('Connected to ZeroMQ Request socket on port 3030');
+
         await subscribeSocket.connect('tcp://127.0.0.1:3031');
+        console.log('Connected to ZeroMQ Subscribe socket on port 3031');
+
         await subscribeSocket.subscribe('update');
-        console.log('Connected to ZeroMQ server (Request and Subscribe)');
+        console.log('Subscribed to "update" topic');
 
         void (async () => {
             for await (const [topic, msg] of subscribeSocket) {
-                console.log('Received published message:', msg.toString());
+                console.log(`Received published message [${topic.toString()}]:`, msg.toString());
             }
         })();
 
@@ -30,6 +34,10 @@ export async function sendZeroMqMessage(
     try {
         await sock.send(message);
         console.log('Sent message:', message);
+
+        const [reply] = await sock.receive();
+        console.log('Received response:', reply.toString());
+        return reply.toString();
     } catch (error) {
         console.error('Error sending message:', error);
         throw error;
