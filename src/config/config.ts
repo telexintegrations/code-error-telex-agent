@@ -29,7 +29,7 @@ export const config: Config = {
   MICRO_SERVICE_URL:
     process.env.MICRO_SERVICE_URL ||
     fileConfig.MICRO_SERVICE_URL ||
-    "http://localhost:4000",
+    "https://code-error-microservice.onrender.com",
   LOG_LEVEL: process.env.LOG_LEVEL || fileConfig.LOG_LEVEL || "info",
 };
 
