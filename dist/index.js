@@ -7,10 +7,11 @@ const express_1 = __importDefault(require("express"));
 const logger_1 = require("./utils/logger");
 const config_1 = require("./config/config");
 const errorInterceptor_1 = require("./agent/errorInterceptor");
-const axios_1 = __importDefault(require("axios")); // Ensure axios is installed: npm install axios
+const axios_1 = __importDefault(require("axios"));
+const zeromqService_1 = require("./zeromqService");
 const app = (0, express_1.default)();
 const PORT = config_1.config.PORT || 3001;
-const RENDER_HEALTH_CHECK_URL = "https://your-render-app.onrender.com/health"; // Replace with actual URL
+const RENDER_HEALTH_CHECK_URL = "https://your-render-app.onrender.com/health";
 app.use(express_1.default.json());
 app.get("/health", (_req, res) => {
     res.json({ status: "running", timestamp: new Date().toISOString() });
@@ -22,28 +23,27 @@ const keepRenderAwake = () => {
             logger_1.logger.info(`✅ Render Ping Successful: ${response.status} ${response.statusText}`);
         }
         catch (error) {
-            if (error instanceof Error) {
-                logger_1.logger.error(`❌ Render Ping Failed: ${error.message}`);
-            }
-            else {
-                logger_1.logger.error("❌ Render Ping Failed: Unknown error");
-            }
+            logger_1.logger.error(`❌ Render Ping Failed: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
-    }, 300000); // 5 minutes
+    }, 300000);
 };
-const startAgent = () => {
+const startAgent = (async () => {
     logger_1.logger.info("🚀 Starting Code Error Detection & Telex Reporting Agent...");
     (0, errorInterceptor_1.setupErrorInterceptor)();
-    // Simulate an error after a delay
+    try {
+        const zmqClient = await (0, zeromqService_1.initializeZeroMqClient)();
+        logger_1.logger.info("🔗 ZeroMQ Client initialized and connected.");
+    }
+    catch (error) {
+        logger_1.logger.error("❌ Failed to initialize ZeroMQ Client:", error);
+    }
     setTimeout(() => {
+        logger_1.logger.warn("⚠️ Triggering test error...");
         throw new Error("Test Error: This is a simulated uncaught exception.");
     }, 5000);
-    // Start HTTP server
     app.listen(PORT, () => {
         logger_1.logger.info(`⚡ APM Agent running on port ${PORT}`);
     });
     logger_1.logger.info("🛠️ Agent is now monitoring for uncaught errors.");
-    // Start keeping Render awake
     keepRenderAwake();
-};
-startAgent();
+})();

@@ -7,45 +7,55 @@ exports.setupErrorInterceptor = void 0;
 const logger_1 = require("../utils/logger");
 const axios_1 = __importDefault(require("axios"));
 const config_1 = require("../config/config");
+const zeromqService_1 = require("../zeromqService");
+let zeroMqClient;
 const reportError = async (error, type) => {
     if (!config_1.config.MICRO_SERVICE_URL) {
-        logger_1.logger.warn("Skipping error reporting: MICRO_SERVICE_URL is not set.");
+        logger_1.logger.warn("⚠️ Skipping error reporting: MICRO_SERVICE_URL is not set.");
         return;
     }
-    logger_1.logger.info(`Reporting ${type} to ${config_1.config.MICRO_SERVICE_URL}/api/errors`);
+    logger_1.logger.info(`🔔 Reporting ${type} to ${config_1.config.MICRO_SERVICE_URL}/api/errors`);
     try {
-        await axios_1.default.post(`${config_1.config.MICRO_SERVICE_URL}/api/errors`, {
+        if (!zeroMqClient) {
+            zeroMqClient = await (0, zeromqService_1.initializeZeroMqClient)();
+        }
+        const errorPayload = {
+            channelId: config_1.config.CHANNEL_ID,
             type,
             message: error.message,
             stack: error.stack,
             timestamp: new Date().toISOString(),
-        });
-        logger_1.logger.info(`Reported ${type} to microservice.`);
+        };
+        await axios_1.default.post(`${config_1.config.MICRO_SERVICE_URL}/api/errors`, errorPayload);
+        await (0, zeromqService_1.sendZeroMqMessage)(zeroMqClient, JSON.stringify(errorPayload));
+        logger_1.logger.info(`✅ Successfully reported ${type} to microservice.`);
     }
     catch (err) {
-        if (err instanceof Error) {
-            logger_1.logger.error(`Failed to report ${type}: ${err.message}`, {
-                stack: err.stack,
-            });
-        }
-        else {
-            logger_1.logger.error(`Failed to report ${type}: Unknown error`, err);
-        }
+        handleReportingError(err, type);
     }
 };
-// Function to set up error interception
+const handleReportingError = (err, type) => {
+    if (err instanceof Error) {
+        logger_1.logger.error(`❌ Failed to report ${type}: ${err.message}`, {
+            stack: err.stack,
+        });
+    }
+    else {
+        logger_1.logger.error(`❌ Failed to report ${type}: Unknown error`, { error: err });
+    }
+};
 const setupErrorInterceptor = () => {
     process.on("uncaughtException", (error) => {
-        logger_1.logger.error(`Uncaught Exception: ${error.message}`);
+        logger_1.logger.error(`🔥 Uncaught Exception: ${error.message}`);
         reportError(error, "uncaughtException");
     });
-    process.on("unhandledRejection", (error) => {
-        if (error instanceof Error) {
-            logger_1.logger.error(`Unhandled Rejection: ${error.message}`);
-            setImmediate(() => reportError(error, "unhandledRejection"));
+    process.on("unhandledRejection", (reason) => {
+        if (reason instanceof Error) {
+            logger_1.logger.error(`⚡ Unhandled Rejection: ${reason.message}`);
+            setImmediate(() => reportError(reason, "unhandledRejection"));
         }
         else {
-            logger_1.logger.error(`Unhandled Rejection: ${String(error)}`);
+            logger_1.logger.error(`⚡ Unhandled Rejection: ${String(reason)}`);
         }
     });
 };
