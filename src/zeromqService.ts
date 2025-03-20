@@ -5,10 +5,10 @@ export async function initializeZeroMqClient() {
     const subscribeSocket = new zmq.Subscriber();
 
     try {
-        await requestSocket.connect('tcp://code-error-microservice.onrender:3030');
+        await requestSocket.connect('tcp://code-error-microservice.onrender.com:3030');
         console.log('Connected to ZeroMQ Request socket on port 3030');
 
-        await subscribeSocket.connect('tcp://code-error-microservice.onrender:3031');
+        await subscribeSocket.connect('tcp://code-error-microservice.onrender.com:3031');
         console.log('Connected to ZeroMQ Subscribe socket on port 3031');
 
         await subscribeSocket.subscribe('update');

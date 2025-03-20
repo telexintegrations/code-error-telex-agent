@@ -22,10 +22,13 @@ const reportError = async (error: Error[], type: string): Promise<void> => {
     const errorPayload = {
       channelId: config.CHANNEL_ID,
       type,
-      message: JSON.stringify(error),
-      stack: error[0].stack,
+      errors: error.map(err => ({
+        message: err.message,
+        stack: err.stack
+      })),
       timestamp: new Date().toISOString(),
     };
+
 
     await axios.post(`${config.MICRO_SERVICE_URL}/api/errors`, errorPayload);
 
@@ -51,24 +54,50 @@ const handleReportingError = (err: unknown, type: string): void => {
 export const setupErrorInterceptor = (): void => {
 
   const errors: Error[] = [];
+  let reportTimeout: NodeJS.Timeout | null = null;
+
+  const scheduleErrorReport = () => {
+    if (reportTimeout) {
+      clearTimeout(reportTimeout);
+    }
+    reportTimeout = setTimeout(() => {
+      if (errors.length > 0) {
+        reportError([...errors], 'Errors');
+        errors.length = 0; // Clear the array
+      }
+    }, 10000); // Wait 10 seconds to batch errors
+  };
+
   process.on("uncaughtException", (error) => {
     logger.error(`🔥 Uncaught Exception: ${error.message}`);
     errors.push(error);
-    // reportError(error, "uncaughtException");
+    scheduleErrorReport();
   });
-
   process.on("unhandledRejection", (reason) => {
-    //   if (reason instanceof Error) {
-    //     logger.error(`⚡ Unhandled Rejection: ${reason.message}`);
-    //     setImmediate(() => reportError(reason, "unhandledRejection"));
-    //   } else {
-    //     logger.error(`⚡ Unhandled Rejection: ${String(reason)}`);
-    //   }
     const error = reason instanceof Error ? reason : new Error(String(reason));
     logger.error('Unhandled Rejection:', error);
     errors.push(error);
+    scheduleErrorReport();
   });
 
-  reportError(errors, 'Errors')
+  // process.on("uncaughtException", (error) => {
+  //   logger.error(`🔥 Uncaught Exception: ${error.message}`);
+  //   errors.push(error);
+  //   // reportError(error, "uncaughtException");
+  // });
+
+  // process.on("unhandledRejection", (reason) => {
+  //   //   if (reason instanceof Error) {
+  //   //     logger.error(`⚡ Unhandled Rejection: ${reason.message}`);
+  //   //     setImmediate(() => reportError(reason, "unhandledRejection"));
+  //   //   } else {
+  //   //     logger.error(`⚡ Unhandled Rejection: ${String(reason)}`);
+  //   //   }
+  //   const error = reason instanceof Error ? reason : new Error(String(reason));
+  //   logger.error('Unhandled Rejection:', error);
+  //   errors.push(error);
+  // });
+
+  // reportError(errors, 'Errors')
 
 };

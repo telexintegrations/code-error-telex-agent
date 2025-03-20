@@ -25,9 +25,9 @@ if (fs.existsSync(configFilePath)) {
 
 export const config: Config = {
   PORT: Number(process.env.PORT) || fileConfig.PORT || 3000,
-  CHANNEL_ID: loadChannelIdFromConfig() || process.env.CHANNEL_ID || "",
+  CHANNEL_ID: loadChannelIdFromConfig() || process.env.CHANNEL_ID || "01959417-7ea6-78ab-85ac-493ac366ff0e",
   MICRO_SERVICE_URL:
-    process.env.MICRO_SERVICE_URL ||
+    process.env.MICRO_SERVICE_URL || 
     fileConfig.MICRO_SERVICE_URL ||
     "https://code-error-microservice.onrender.com",
   LOG_LEVEL: process.env.LOG_LEVEL || fileConfig.LOG_LEVEL || "info",

@@ -39,8 +39,16 @@ const startAgent = (async () => {
     }
     setTimeout(() => {
         logger_1.logger.warn("⚠️ Triggering test error...");
-        throw new Error("Test Error: This is a simulated uncaught exception.");
-    }, 5000);
+        throw new Error("Test Error: This is 1st simulated uncaught exception.");
+    }, 200);
+    setTimeout(() => {
+        logger_1.logger.warn("⚠️ Triggering test error...");
+        throw new Error("Test Error: This 4th simulated uncaught exception.");
+    }, 100);
+    setTimeout(() => {
+        logger_1.logger.warn("⚠️ Triggering test error...");
+        throw new Error("second Error: This is the 3rd simulated uncaught exception.");
+    }, 100);
     app.listen(PORT, () => {
         logger_1.logger.info(`⚡ APM Agent running on port ${PORT}`);
     });
