@@ -22,8 +22,8 @@ const reportError = async (error, type) => {
         const errorPayload = {
             channelId: config_1.config.CHANNEL_ID,
             type,
-            message: error.message,
-            stack: error.stack,
+            message: JSON.stringify(error),
+            stack: error[0].stack,
             timestamp: new Date().toISOString(),
         };
         await axios_1.default.post(`${config_1.config.MICRO_SERVICE_URL}/api/errors`, errorPayload);
@@ -45,18 +45,23 @@ const handleReportingError = (err, type) => {
     }
 };
 const setupErrorInterceptor = () => {
+    const errors = [];
     process.on("uncaughtException", (error) => {
         logger_1.logger.error(`🔥 Uncaught Exception: ${error.message}`);
-        reportError(error, "uncaughtException");
+        errors.push(error);
+        // reportError(error, "uncaughtException");
     });
     process.on("unhandledRejection", (reason) => {
-        if (reason instanceof Error) {
-            logger_1.logger.error(`⚡ Unhandled Rejection: ${reason.message}`);
-            setImmediate(() => reportError(reason, "unhandledRejection"));
-        }
-        else {
-            logger_1.logger.error(`⚡ Unhandled Rejection: ${String(reason)}`);
-        }
+        //   if (reason instanceof Error) {
+        //     logger.error(`⚡ Unhandled Rejection: ${reason.message}`);
+        //     setImmediate(() => reportError(reason, "unhandledRejection"));
+        //   } else {
+        //     logger.error(`⚡ Unhandled Rejection: ${String(reason)}`);
+        //   }
+        const error = reason instanceof Error ? reason : new Error(String(reason));
+        logger_1.logger.error('Unhandled Rejection:', error);
+        errors.push(error);
     });
+    reportError(errors, 'Errors');
 };
 exports.setupErrorInterceptor = setupErrorInterceptor;

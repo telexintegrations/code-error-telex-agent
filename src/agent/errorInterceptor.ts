@@ -6,7 +6,7 @@ import * as zmq from 'zeromq';
 
 let zeroMqClient: zmq.Request;
 
-const reportError = async (error: Error, type: string): Promise<void> => {
+const reportError = async (error: Error[], type: string): Promise<void> => {
   if (!config.MICRO_SERVICE_URL) {
     logger.warn("⚠️ Skipping error reporting: MICRO_SERVICE_URL is not set.");
     return;
@@ -22,8 +22,8 @@ const reportError = async (error: Error, type: string): Promise<void> => {
     const errorPayload = {
       channelId: config.CHANNEL_ID,
       type,
-      message: error.message,
-      stack: error.stack,
+      message: JSON.stringify(error),
+      stack: error[0].stack,
       timestamp: new Date().toISOString(),
     };
 
@@ -47,18 +47,28 @@ const handleReportingError = (err: unknown, type: string): void => {
   }
 };
 
+
 export const setupErrorInterceptor = (): void => {
+
+  const errors: Error[] = [];
   process.on("uncaughtException", (error) => {
     logger.error(`🔥 Uncaught Exception: ${error.message}`);
-    reportError(error, "uncaughtException");
+    errors.push(error);
+    // reportError(error, "uncaughtException");
   });
 
   process.on("unhandledRejection", (reason) => {
-    if (reason instanceof Error) {
-      logger.error(`⚡ Unhandled Rejection: ${reason.message}`);
-      setImmediate(() => reportError(reason, "unhandledRejection"));
-    } else {
-      logger.error(`⚡ Unhandled Rejection: ${String(reason)}`);
-    }
+    //   if (reason instanceof Error) {
+    //     logger.error(`⚡ Unhandled Rejection: ${reason.message}`);
+    //     setImmediate(() => reportError(reason, "unhandledRejection"));
+    //   } else {
+    //     logger.error(`⚡ Unhandled Rejection: ${String(reason)}`);
+    //   }
+    const error = reason instanceof Error ? reason : new Error(String(reason));
+    logger.error('Unhandled Rejection:', error);
+    errors.push(error);
   });
+
+  reportError(errors, 'Errors')
+
 };

@@ -58,13 +58,24 @@ async function initializeZeroMqClient() {
         throw error;
     }
 }
-async function sendZeroMqMessage(sock, message) {
+async function sendZeroMqMessage(sock, 
+// message: string,
+errorPayload) {
+    // try {
+    //     await sock.send(message);
+    //     console.log('Sent message:', message);
+    //     const [reply] = await sock.receive();
+    //     console.log('Received response:', reply.toString());
+    //     return reply.toString();
+    // } catch (error) {
+    //     console.error('Error sending message:', error);
+    //     throw error;
+    // }
     try {
-        await sock.send(message);
-        console.log('Sent message:', message);
+        await sock.send(errorPayload);
+        console.log('Sent message:', errorPayload);
         const [reply] = await sock.receive();
         console.log('Received response:', reply.toString());
-        return reply.toString();
     }
     catch (error) {
         console.error('Error sending message:', error);
