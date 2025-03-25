@@ -1,120 +1,29 @@
 import dotenv from "dotenv";
-import path from "path";
-import fs from "fs";
 
 dotenv.config();
 
 export interface Config {
-  PORT: number;
   MICRO_SERVICE_URL: string;
-  CHANNEL_ID: string;
   LOG_LEVEL: string;
+  IS_DEV: boolean;
+  CHANNEL_ID: string;
 }
 
-const configFilePath = path.resolve(__dirname, "../../config.json");
-let fileConfig: Partial<Config> = {};
-
-if (fs.existsSync(configFilePath)) {
-  try {
-    const fileContent = fs.readFileSync(configFilePath, "utf-8");
-    fileConfig = JSON.parse(fileContent);
-  } catch (error) {
-    console.error("❌ Error reading config file:", error);
-  }
-}
-
-export const config: Config = {
-  PORT: Number(process.env.PORT) || fileConfig.PORT || 3000,
-  CHANNEL_ID:
-    loadChannelIdFromConfig() ||
-    process.env.CHANNEL_ID ||
-    "",
+let configSetting: Config = {
   MICRO_SERVICE_URL:
     process.env.MICRO_SERVICE_URL ||
-    fileConfig.MICRO_SERVICE_URL ||
     "https://system-integration.staging.telex.im/code-error-integration/",
-  LOG_LEVEL: process.env.LOG_LEVEL || fileConfig.LOG_LEVEL || "info",
+  LOG_LEVEL: process.env.LOG_LEVEL || "info",
+  IS_DEV: process.env.IS_DEV === "true" ? true : false,
+  CHANNEL_ID: "",
 };
 
-function loadChannelIdFromConfig(): string {
-  // const configPath = path.join(
-  //   process.cwd(),
-  //   ".code-error-telex-agent",
-  //   "config.json"
-  // );
+// update config
+export const updateConfig = (payload: Partial<Config>) => {
+  configSetting = { ...configSetting, ...payload };
+  console.log("configSetting", configSetting);
+};
 
-  // if (!fs.existsSync(configPath)) {
-  //   console.warn(
-  //     "⚠️ Config file not found for Channel ID. Using empty string."
-  //   );
-  //   return "";
-  // }
-
-  try {
-    // const fileContent = fs.readFileSync(configPath, "utf8");
-    // const fileConfig = JSON.parse(fileContent);
-    return process.env.CHANNEL_ID || "";
-  } catch (err) {
-    console.warn("⚠️ Could not load channel ID from config file:", err);
-    return "";
-  }
+export function getConfig(): Config {
+  return configSetting;
 }
-
-// import dotenv from "dotenv";
-// import path from "path";
-// import fs from "fs";
-
-// dotenv.config();
-
-// export interface Config {
-//   PORT: number;
-//   MICRO_SERVICE_URL: string;
-//   CHANNEL_ID: string;
-//   LOG_LEVEL: string;
-// }
-
-// const configFilePath = path.resolve(__dirname, "../../config.json");
-// let fileConfig: Partial<Config> = {};
-
-// if (fs.existsSync(configFilePath)) {
-//   try {
-//     const fileContent = fs.readFileSync(configFilePath, "utf-8");
-//     fileConfig = JSON.parse(fileContent);
-//   } catch (error) {
-//     console.error("❌ Error reading config file:", error);
-//   }
-// }
-
-// export const config: Config = {
-//   PORT: Number(process.env.PORT) || fileConfig.PORT || 3000,
-//   CHANNEL_ID: loadChannelIdFromConfig() || process.env.CHANNEL_ID || "",
-//   MICRO_SERVICE_URL:
-//     process.env.MICRO_SERVICE_URL ||
-//     fileConfig.MICRO_SERVICE_URL ||
-//     "http://localhost:4000",
-//   LOG_LEVEL: process.env.LOG_LEVEL || fileConfig.LOG_LEVEL || "info",
-// };
-
-// function loadChannelIdFromConfig(): string {
-//   // const configPath = path.join(
-//   //   process.cwd(),
-//   //   ".code-error-telex-agent",
-//   //   "config.json"
-//   // );
-
-//   // if (!fs.existsSync(configPath)) {
-//   //   console.warn(
-//   //     "⚠️ Config file not found for Channel ID. Using empty string."
-//   //   );
-//   //   return "";
-//   // }
-
-//   try {
-//     // const fileContent = fs.readFileSync(configPath, "utf8");
-//     // const fileConfig = JSON.parse(fileContent);
-//     return process.env.CHANNEL_ID || "";
-//   } catch (err) {
-//     console.warn("⚠️ Could not load channel ID from config file:", err);
-//     return "";
-//   }
-// }
