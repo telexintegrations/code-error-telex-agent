@@ -1,11 +1,14 @@
 import * as zmq from "zeromq";
 import { logger } from "./utils/logger";
+import {getConfig} from './config/config';
 
 // Use environment variables if available; otherwise, fallback to server defaults.
-const host = process.env.ZEROMQ_HOST || "49.12.208.6";
-const basePort = process.env.ZEROMQ_PORT ? Number(process.env.ZEROMQ_PORT) : 18001;
-const ZEROMQ_REQUEST_URL = process.env.ZEROMQ_REQUEST_URL || `tcp://${host}:${basePort + 1}`;
-const ZEROMQ_SUBSCRIBE_URL = process.env.ZEROMQ_SUBSCRIBE_URL || `tcp://${host}:${basePort + 2}`;
+
+const host = getConfig().IS_DEV ? "127.0.0.1" : "49.12.208.6";
+console.log('host', host)
+const basePort = getConfig().IS_DEV ? 4000 : 18001;
+const ZEROMQ_SUBSCRIBE_URL = `tcp://${host}:${basePort + 1}`;
+const ZEROMQ_REQUEST_URL = `tcp://${host}:${basePort + 2}`;
 
 const SUBSCRIPTION_TOPIC = "update";
 
@@ -139,3 +142,10 @@ export async function sendZeroMqMessage(
 //     throw error;
 //   }
 // }
+
+
+
+
+// communication mechanism is 
+// PUB/SUB 
+// REQ/REP
