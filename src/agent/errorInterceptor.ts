@@ -4,100 +4,182 @@ import { config } from "../config/config";
 import { initializeZeroMqClient, sendZeroMqMessage } from "../zeromqService";
 import * as zmq from 'zeromq';
 
+// State management
 let zeroMqClient: zmq.Request;
+const errors: Error[] = [];
+let reportTimeout: NodeJS.Timeout | null = null;
+let isReporting = false;
+const REPORT_INTERVAL = 1000; // 10 seconds
+// const REPORT_INTERVAL = 10000; // 10 seconds
+const MAX_BATCH_SIZE = 100;
 
-const reportError = async (error: Error[], type: string): Promise<void> => {
+/**
+ * Enrich the error payload with extra context (uptime, node version, etc.)
+ */
+function enrichError(error: Error) {
+  return {
+    message: error.message,
+    stack: error.stack,
+    extra: {
+      occurredAt: new Date().toISOString(),
+      processUptime: process.uptime(),
+      nodeVersion: process.version,
+      environment: process.env.NODE_ENV || "development"
+    }
+  };
+}
+
+/**
+ * Reports a batch of collected errors to the error-tracking microservice.
+ * It uses ZeroMQ first, then falls back to HTTP if needed.
+ */
+async function reportErrorBatch(type: string): Promise<void> {
+  console.log('reporting error in batch');
+
+  if (isReporting) return; // Prevent concurrent reporting
+
   if (!config.MICRO_SERVICE_URL) {
     logger.warn("⚠️ Skipping error reporting: MICRO_SERVICE_URL is not set.");
     return;
   }
 
-  logger.info(`🔔 Reporting ${type} to ${config.MICRO_SERVICE_URL}/api/errors`);
+  // Clone errors to prevent race conditions.
+  const errorsBatch = [...errors];
+  if (errorsBatch.length === 0) return;
+
+  // Clear the batched errors after copying.
+  errors.length = 0;
+  isReporting = true;
 
   try {
+    // Initialize ZeroMQ client if not already done.
     if (!zeroMqClient) {
-      zeroMqClient = await initializeZeroMqClient();
+      try {
+        zeroMqClient = await initializeZeroMqClient();
+      } catch (initError) {
+        logger.error(`❌ Failed to initialize ZeroMQ client: ${
+          initError instanceof Error ? initError.message : "Unknown error"
+        }`);
+        // Continue with HTTP fallback.
+      }
     }
 
+    // Build the enriched payload.
     const errorPayload = {
       channelId: config.CHANNEL_ID,
       type,
-      errors: error.map(err => ({
-        message: err.message,
-        stack: err.stack
-      })),
-      timestamp: new Date().toISOString(),
+      errors: errorsBatch.map(err => enrichError(err)),
+      timestamp: new Date().toISOString()
     };
 
+    // Try ZeroMQ first, fall back to HTTP.
+    let reported = false;
+    if (zeroMqClient) {
+      try {
+        await sendZeroMqMessage(zeroMqClient, JSON.stringify(errorPayload));
+        reported = true;
+        logger.info(`✅ Successfully reported ${errorsBatch.length} errors via ZeroMQ`);
+      } catch (zmqError) {
+        logger.warn(`⚠️ ZeroMQ reporting failed, falling back to HTTP: ${
+          zmqError instanceof Error ? zmqError.message : "Unknown error"
+        }`);
+      }
+    }
 
-    await axios.post(`${config.MICRO_SERVICE_URL}/api/errors`, errorPayload);
-
-    await sendZeroMqMessage(zeroMqClient, JSON.stringify(errorPayload));
-
-    logger.info(`✅ Successfully reported ${type} to microservice.`);
+    // HTTP fallback.
+    if (!reported) {
+      await axios.post(`${config.MICRO_SERVICE_URL}api/errors`, errorPayload, {
+        timeout: 5000
+      });
+      logger.info(`✅ Successfully reported ${errorsBatch.length} errors via HTTP`);
+    }
   } catch (err: unknown) {
     handleReportingError(err, type);
+  } finally {
+    isReporting = false;
+    reportTimeout = null;
   }
-};
+}
 
-const handleReportingError = (err: unknown, type: string): void => {
+/**
+ * Handles errors that occur during the reporting process.
+ */
+function handleReportingError(err: unknown, type: string): void {
   if (err instanceof Error) {
     logger.error(`❌ Failed to report ${type}: ${err.message}`, {
-      stack: err.stack,
+      stack: err.stack
     });
   } else {
     logger.error(`❌ Failed to report ${type}: Unknown error`, { error: err });
   }
-};
+}
 
+/**
+ * Schedules a batch error report using a timeout.
+ */
+function scheduleErrorReport(type: string): void {
+  console.log('start schedule error reporting');
 
-export const setupErrorInterceptor = (): void => {
-
-  const errors: Error[] = [];
-  let reportTimeout: NodeJS.Timeout | null = null;
-
-  const scheduleErrorReport = () => {
+  if (errors.length >= MAX_BATCH_SIZE) {
     if (reportTimeout) {
       clearTimeout(reportTimeout);
+      reportTimeout = null;
     }
-    reportTimeout = setTimeout(() => {
-      if (errors.length > 0) {
-        reportError([...errors], 'Errors');
-        errors.length = 0; // Clear the array
-      }
-    }, 10000); // Wait 10 seconds to batch errors
-  };
+    void reportErrorBatch(type);
+    return;
+  }
 
+  if (reportTimeout) {
+    clearTimeout(reportTimeout);
+  }
+  
+  reportTimeout = setTimeout(() => {
+    if (errors.length > 0) {
+      void reportErrorBatch(type);
+    }
+  }, REPORT_INTERVAL);
+}
+
+/**
+ * Sets up global error interceptors for:
+ * - Uncaught exceptions.
+ * - Unhandled promise rejections.
+ * - Process warnings.
+ * - Process signals to flush errors on shutdown.
+ */
+export function setupErrorInterceptor(): void {
   process.on("uncaughtException", (error) => {
     logger.error(`🔥 Uncaught Exception: ${error.message}`);
     errors.push(error);
-    scheduleErrorReport();
+    scheduleErrorReport("uncaughtExceptionBatch");
   });
+
   process.on("unhandledRejection", (reason) => {
     const error = reason instanceof Error ? reason : new Error(String(reason));
-    logger.error('Unhandled Rejection:', error);
+    logger.error("❗ Unhandled Rejection:", error);
     errors.push(error);
-    scheduleErrorReport();
+    scheduleErrorReport("unhandledRejectionBatch");
   });
-
-  // process.on("uncaughtException", (error) => {
-  //   logger.error(`🔥 Uncaught Exception: ${error.message}`);
-  //   errors.push(error);
-  //   // reportError(error, "uncaughtException");
-  // });
-
-  // process.on("unhandledRejection", (reason) => {
-  //   //   if (reason instanceof Error) {
-  //   //     logger.error(`⚡ Unhandled Rejection: ${reason.message}`);
-  //   //     setImmediate(() => reportError(reason, "unhandledRejection"));
-  //   //   } else {
-  //   //     logger.error(`⚡ Unhandled Rejection: ${String(reason)}`);
-  //   //   }
-  //   const error = reason instanceof Error ? reason : new Error(String(reason));
-  //   logger.error('Unhandled Rejection:', error);
-  //   errors.push(error);
-  // });
-
-  // reportError(errors, 'Errors')
-
-};
+  
+  process.on("warning", (warning) => {
+    logger.warn(`⚠️ Warning: ${warning.message}`, {
+      name: warning.name,
+      stack: warning.stack
+    });
+    errors.push(warning);
+    scheduleErrorReport("warningBatch");
+  });
+  
+  // Flush errors on shutdown signals.
+  ["SIGINT", "SIGTERM"].forEach((signal) => {
+    process.on(signal as NodeJS.Signals, () => {
+      logger.info(`Received ${signal}, flushing error reports before shutdown...`);
+      
+      if (errors.length > 0) {
+        void reportErrorBatch("shutdownBatch");
+      }
+      
+      setTimeout(() => process.exit(0), 1500);
+    });
+  });
+}

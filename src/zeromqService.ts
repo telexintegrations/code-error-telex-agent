@@ -1,57 +1,141 @@
-import * as zmq from 'zeromq';
+import * as zmq from "zeromq";
+import { logger } from "./utils/logger";
 
-export async function initializeZeroMqClient() {
+// Use environment variables if available; otherwise, fallback to server defaults.
+const host = process.env.ZEROMQ_HOST || "49.12.208.6";
+const basePort = process.env.ZEROMQ_PORT ? Number(process.env.ZEROMQ_PORT) : 18001;
+const ZEROMQ_REQUEST_URL = process.env.ZEROMQ_REQUEST_URL || `tcp://${host}:${basePort + 1}`;
+const ZEROMQ_SUBSCRIBE_URL = process.env.ZEROMQ_SUBSCRIBE_URL || `tcp://${host}:${basePort + 2}`;
+
+const SUBSCRIPTION_TOPIC = "update";
+
+/**
+ * Initializes the ZeroMQ client by connecting both a Request and a Subscriber socket.
+ * The Request socket is used for sending messages, and the Subscriber socket listens
+ * for published messages on a predefined topic.
+ *
+ * @returns A Promise that resolves to the initialized ZeroMQ Request socket.
+ */
+export async function initializeZeroMqClient(): Promise<zmq.Request> {
     const requestSocket = new zmq.Request();
     const subscribeSocket = new zmq.Subscriber();
 
     try {
-        await requestSocket.connect('tcp://code-error-microservice.onrender.com:3030');
-        console.log('Connected to ZeroMQ Request socket on port 3030');
+        await requestSocket.connect(ZEROMQ_REQUEST_URL);
+        logger.info(`🔗 Connected to ZeroMQ Request socket on ${ZEROMQ_REQUEST_URL}`);
 
-        await subscribeSocket.connect('tcp://code-error-microservice.onrender.com:3031');
-        console.log('Connected to ZeroMQ Subscribe socket on port 3031');
+        await subscribeSocket.connect(ZEROMQ_SUBSCRIBE_URL);
+        logger.info(`🔗 Connected to ZeroMQ Subscriber socket on ${ZEROMQ_SUBSCRIBE_URL}`);
 
-        await subscribeSocket.subscribe('update');
-        console.log('Subscribed to "update" topic');
+        await subscribeSocket.subscribe(SUBSCRIPTION_TOPIC);
+        logger.info(`📡 Subscribed to "${SUBSCRIPTION_TOPIC}" topic`);
 
-        void (async () => {
+        // Start async loop to process incoming messages on the Subscriber socket.
+        (async () => {
             for await (const [topic, msg] of subscribeSocket) {
-                console.log(`Received published message [${topic.toString()}]:`, msg.toString());
+                logger.info(`📨 Received message on topic [${topic.toString()}]: ${msg.toString()}`);
             }
         })();
 
         return requestSocket;
     } catch (error) {
-        console.error('ZeroMQ client connection error:', error);
+        logger.error("❌ ZeroMQ client connection error:", error);
         throw error;
     }
 }
 
+/**
+ * Sends a message using the provided ZeroMQ Request socket.
+ * It logs both the sent message and the reply from the server.
+ *
+ * @param sock - The ZeroMQ Request socket.
+ * @param errorPayload - The payload to send as a string.
+ */
 export async function sendZeroMqMessage(
     sock: zmq.Request,
-    // message: string,
     errorPayload: string
-) {
-    // try {
-    //     await sock.send(message);
-    //     console.log('Sent message:', message);
-
-    //     const [reply] = await sock.receive();
-    //     console.log('Received response:', reply.toString());
-    //     return reply.toString();
-    // } catch (error) {
-    //     console.error('Error sending message:', error);
-    //     throw error;
-    // }
-
+): Promise<void> {
     try {
         await sock.send(errorPayload);
-        console.log('Sent message:', errorPayload);
+        logger.info(`📤 Sent ZeroMQ message: ${errorPayload}`);
 
         const [reply] = await sock.receive();
-        console.log('Received response:', reply.toString());
+        logger.info(`📥 Received ZeroMQ reply: ${reply.toString()}`);
     } catch (error) {
-        console.error('Error sending message:', error);
+        logger.error("❌ Error sending ZeroMQ message:", error);
         throw error;
     }
 }
+
+// import * as zmq from "zeromq";
+// import { logger } from "./utils/logger";
+
+// const ZEROMQ_REQUEST_URL =
+//   process.env.ZEROMQ_REQUEST_URL || "tcp://127.0.0.1:3030";
+// const ZEROMQ_SUBSCRIBE_URL =
+//   process.env.ZEROMQ_SUBSCRIBE_URL || "tcp://127.0.0.1:3031";
+// const SUBSCRIPTION_TOPIC = "update";
+
+// /**
+//  * Initializes the ZeroMQ client by connecting both a Request and a Subscriber socket.
+//  * The Request socket is used for sending messages, and the Subscriber socket listens
+//  * for published messages on a predefined topic.
+//  *
+//  * @returns A Promise that resolves to the initialized ZeroMQ Request socket.
+//  */
+// export async function initializeZeroMqClient(): Promise<zmq.Request> {
+//   const requestSocket = new zmq.Request();
+//   const subscribeSocket = new zmq.Subscriber();
+
+//   try {
+//     await requestSocket.connect(ZEROMQ_REQUEST_URL);
+//     logger.info(
+//       `🔗 Connected to ZeroMQ Request socket on ${ZEROMQ_REQUEST_URL}`
+//     );
+
+//     await subscribeSocket.connect(ZEROMQ_SUBSCRIBE_URL);
+//     logger.info(
+//       `🔗 Connected to ZeroMQ Subscriber socket on ${ZEROMQ_SUBSCRIBE_URL}`
+//     );
+
+//     await subscribeSocket.subscribe(SUBSCRIPTION_TOPIC);
+//     logger.info(`📡 Subscribed to "${SUBSCRIPTION_TOPIC}" topic`);
+
+//     // Start async loop to process incoming messages on the Subscriber socket.
+//     (async () => {
+//       for await (const [topic, msg] of subscribeSocket) {
+//         logger.info(
+//           `📨 Received message on topic [${topic.toString()}]: ${msg.toString()}`
+//         );
+//       }
+//     })();
+
+//     return requestSocket;
+//   } catch (error) {
+//     logger.error("❌ ZeroMQ client connection error:", error);
+//     throw error;
+//   }
+// }
+
+// /**
+//  * Sends a message using the provided ZeroMQ Request socket.
+//  * It logs both the sent message and the reply from the server.
+//  *
+//  * @param sock - The ZeroMQ Request socket.
+//  * @param errorPayload - The payload to send as a string.
+//  */
+// export async function sendZeroMqMessage(
+//   sock: zmq.Request,
+//   errorPayload: string
+// ): Promise<void> {
+//   try {
+//     await sock.send(errorPayload);
+//     logger.info(`📤 Sent ZeroMQ message: ${errorPayload}`);
+
+//     const [reply] = await sock.receive();
+//     logger.info(`📥 Received ZeroMQ reply: ${reply.toString()}`);
+//   } catch (error) {
+//     logger.error("❌ Error sending ZeroMQ message:", error);
+//     throw error;
+//   }
+// }
