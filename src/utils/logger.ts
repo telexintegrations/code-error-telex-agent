@@ -1,8 +1,8 @@
 import winston from "winston";
-import { config } from "../config/config";
+import {  getConfig } from "../config/config";
 
 const logger = winston.createLogger({
-  level: config.LOG_LEVEL,
+  level: getConfig().LOG_LEVEL,
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.printf(
