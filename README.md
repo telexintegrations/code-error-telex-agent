@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Code Error Agent Integration is a lightweight tool designed to capture errors in your codebase using static analysis tools such as ESLint, the TypeScript compiler, Prettier, or Flake8 (for Python). It categorizes and prioritizes errors and sends detailed error reports directly to a Telex channel.
+The Code Error Agent Integration is a lightweight tool designed to capture unhandled errors in your codebase. It categorizes and prioritizes errors and sends detailed error reports directly to a Telex channel. While sending report we also send an AI fix for this errors in your codebase
 
 ## Features
 
@@ -29,7 +29,7 @@ The Code Error Agent Integration is a lightweight tool designed to capture error
 ## Installation
 
 ```
-npm install code error agent
+npm install error-telex
 ```
 
 Then add this code snippet to your entry file
@@ -40,7 +40,7 @@ import { initializeTelexSDK } from 'code-error-telex-agent-handler';
 async () => {
 await initializeTelexSDK({
 channelId
-:"01959417-7ea6-78ab-85ac-493ac366ff0e",
+:"<copy and paste your Telex channel Id Here> ",
 });
 }()
 
