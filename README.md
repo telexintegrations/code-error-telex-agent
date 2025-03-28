@@ -111,7 +111,7 @@ const app = express();
 
 // Initialize Error-Telex with AI monitoring
 await initializeTelexSDK({
-  channelId: process.env.TELEX_CHANNEL_ID
+  channelId: "your-telex-channel-id" 
 });
 
 app.get("/", (req, res) => {
