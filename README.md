@@ -72,7 +72,7 @@ await initializeTelexSDK({
 
 ## Example Error Report in Telex
 
-```
+```plaintext
 🚨 Error Detected
 Type: UnhandledPromiseRejection
 Message: Cannot read property 'data' of undefined
@@ -84,13 +84,11 @@ Stack: UserService.getUserData
 💡 AI-Suggested Fix:
 "Add null checking before accessing the data property:
 
-```typescript
 // Current code
 const userData = response.data;
 
 // Recommended fix
 const userData = response?.data ?? defaultUserData;
-```
 
 🔍 Additional Context:
 - Always validate API responses
